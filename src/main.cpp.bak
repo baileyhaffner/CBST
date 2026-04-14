@@ -72,6 +72,7 @@ void setup() {
     // ---- Serial for debugging ----
     pinMode(17, OUTPUT);
     digitalWrite(17, HIGH);
+
     Serial.begin(115200);
     while (!Serial && millis() < 3000) {
         // Wait up to 3 seconds for serial connection (USB CDC on ESP32-S3)
