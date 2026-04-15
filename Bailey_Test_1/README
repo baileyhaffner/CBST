@@ -3,9 +3,11 @@ Step 1: PlatformIO CLEAN
 Step 2: PlatformIO BUILD
 
 Step 3: PLATFORMIO UPLOAD 
-    - Use manual select for COM port
+    - Plug in dev board, use device manager to find correct COM port, manually change COM port in platformio.ini (can try auto but didnt work for me)
     - BEFORE pressing UPLOAD, hold down boot button on dev board and press reset then release boot button (ESP32 bootloader mode)
-    - Use 115200 baud rate (ESP32 default)
+    - Use 115200 baud rate (ESP32 default) 
 
 Step 4: Open PlatformIO SERIAL MONITOR
     - If using older windows, press reset on dev boad once, then press any key on keyboard (keyboard interupt)
+
+N.B.: use ctrl + c to stop serial monitor, then press reset on dev board to restart program and re-enter serial monitor (keyboard interupt)

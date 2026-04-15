@@ -99,7 +99,7 @@ void setup() {
     Serial.println(firstFound, HEX);
   } else {
     Serial.println("Found I2C device(s), but could not initialise LSM6DSOX.");
-    Serial.println("If the found address is not 0x6A or 0x6B, it may be another device.");
+    Serial.println("If the found address is not 0x6A or 0x6B, it may be another device (dev board BMS at 0x36)");
     return;
   }
 
@@ -129,5 +129,5 @@ void loop() {
     Serial.println("IMU not ready.");
   }
 
-  delay(1000);
+  delay(500);
 }
