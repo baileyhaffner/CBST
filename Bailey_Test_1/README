@@ -15,7 +15,17 @@ Step 4: Open PlatformIO SERIAL MONITOR
 N.B.: use ctrl + c to stop serial monitor, then press reset on dev board to restart program and re-enter serial monitor (keyboard interupt)
 
 
+
+
+
 PYTHON HMI INSTRUCTIONS
 
 Dependencies:
     - matplotlib pyserial (use pip install matplotlib pyserial) 
+
+Step 1: Close the serial monitor in platformio (ctrl + c) and remove terminal window
+    - Keep the ESP plugged in 
+
+Step 2: Change COM port in plotting_script.py to match the COM port used in platformio.ini
+
+Step 3: Run plotting_script.py (this should open a matplotlib window to show the live data)
