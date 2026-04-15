@@ -3,35 +3,48 @@
 #include <Adafruit_LSM6DSOX.h>
 #include <Adafruit_Sensor.h>
 
-// Change these if your wiring is different
 static const int SDA_PIN = 8;
 static const int SCL_PIN = 9;
 
 Adafruit_LSM6DSOX imu;
 
-bool scanI2C(uint8_t &foundAddress) {
-  bool foundAny = false;
-  foundAddress = 0;
+bool imuReady = false;
+bool found6A = false;
+bool found6B = false;
+uint8_t imuAddress = 0;
+
+void scanI2C() {
+  found6A = false;
+  found6B = false;
 
   Serial.println();
   Serial.println("Scanning I2C bus...");
+
+  bool foundAny = false;
 
   for (uint8_t addr = 1; addr < 127; addr++) {
     Wire.beginTransmission(addr);
     uint8_t error = Wire.endTransmission();
 
     if (error == 0) {
+      foundAny = true;
+
       Serial.print("Found I2C device at 0x");
-      if (addr < 16) Serial.print('0');
+      if (addr < 16) {
+        Serial.print('0');
+      }
       Serial.println(addr, HEX);
 
-      if (!foundAny) {
-        foundAddress = addr;
-        foundAny = true;
+      if (addr == 0x6A) {
+        found6A = true;
+      } else if (addr == 0x6B) {
+        found6B = true;
       }
     } else if (error == 4) {
       Serial.print("Unknown error at 0x");
-      if (addr < 16) Serial.print('0');
+      if (addr < 16) {
+        Serial.print('0');
+      }
       Serial.println(addr, HEX);
     }
   }
@@ -39,34 +52,45 @@ bool scanI2C(uint8_t &foundAddress) {
   if (!foundAny) {
     Serial.println("No I2C devices found.");
   }
-
-  return foundAny;
 }
 
-void printIMUData() {
-  sensors_event_t accel, gyro, temp;
-  imu.getEvent(&accel, &gyro, &temp);
+bool initIMU() {
+  Serial.println();
+  Serial.println("Trying to initialise LSM6DSOX...");
 
-  Serial.println("---- IMU Data ----");
+  if (found6A) {
+    if (imu.begin_I2C(0x6A)) {
+      imuAddress = 0x6A;
+      return true;
+    }
+  }
 
-  Serial.print("Accel X: ");
-  Serial.print(accel.acceleration.x, 3);
-  Serial.print("  Y: ");
-  Serial.print(accel.acceleration.y, 3);
-  Serial.print("  Z: ");
-  Serial.println(accel.acceleration.z, 3);
+  if (found6B) {
+    if (imu.begin_I2C(0x6B)) {
+      imuAddress = 0x6B;
+      return true;
+    }
+  }
 
-  Serial.print("Gyro  X: ");
-  Serial.print(gyro.gyro.x, 3);
-  Serial.print("  Y: ");
-  Serial.print(gyro.gyro.y, 3);
-  Serial.print("  Z: ");
-  Serial.println(gyro.gyro.z, 3);
+  // Fallback in case scan missed it for some reason
+  if (imu.begin_I2C(0x6A)) {
+    imuAddress = 0x6A;
+    return true;
+  }
 
-  Serial.print("Temp C: ");
-  Serial.println(temp.temperature, 2);
+  if (imu.begin_I2C(0x6B)) {
+    imuAddress = 0x6B;
+    return true;
+  }
 
-  Serial.println("------------------");
+  return false;
+}
+
+void setupIMUConfig() {
+  imu.setAccelRange(LSM6DS_ACCEL_RANGE_4_G);
+  imu.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
+  imu.setAccelDataRate(LSM6DS_RATE_104_HZ);
+  imu.setGyroDataRate(LSM6DS_RATE_104_HZ);
 }
 
 void setup() {
@@ -74,60 +98,60 @@ void setup() {
   delay(2000);
 
   Serial.println();
-  Serial.println("ESP32-S3 I2C + LSM6DSOX test starting");
+  Serial.println("ESP32-S3 I2C + LSM6DSOX starting");
 
   Wire.begin(SDA_PIN, SCL_PIN);
   Wire.setClock(100000);
 
-  uint8_t firstFound = 0;
-  bool found = scanI2C(firstFound);
+  scanI2C();
 
-  if (!found) {
-    Serial.println("No devices found. Check SDA, SCL, power, and GND.");
+  if (!initIMU()) {
+    Serial.println("Could not initialise LSM6DSOX.");
+    Serial.println("Expected IMU at 0x6A or 0x6B.");
+    Serial.println("If you see only 0x36, that is likely another onboard device, not the IMU.");
+    imuReady = false;
     return;
   }
 
-  Serial.println();
-  Serial.println("Trying to initialise LSM6DSOX...");
+  setupIMUConfig();
+  imuReady = true;
 
-  // Try default address first
-  if (imu.begin_I2C()) {
-    Serial.println("LSM6DSOX initialised at default address.");
-  } else if (firstFound != 0 && imu.begin_I2C(firstFound)) {
-    Serial.print("LSM6DSOX initialised at scanned address 0x");
-    if (firstFound < 16) Serial.print('0');
-    Serial.println(firstFound, HEX);
-  } else {
-    Serial.println("Found I2C device(s), but could not initialise LSM6DSOX.");
-    Serial.println("If the found address is not 0x6A or 0x6B, it may be another device (dev board BMS at 0x36)");
-    return;
+  Serial.print("LSM6DSOX initialised at 0x");
+  if (imuAddress < 16) {
+    Serial.print('0');
   }
+  Serial.println(imuAddress, HEX);
 
-  imu.setAccelRange(LSM6DS_ACCEL_RANGE_4_G);
-  imu.setGyroRange(LSM6DS_GYRO_RANGE_250_DPS);
-  imu.setAccelDataRate(LSM6DS_RATE_104_HZ);
-  imu.setGyroDataRate(LSM6DS_RATE_104_HZ);
-
-  Serial.println("IMU setup complete.");
+  // CSV header for the Python script
+  Serial.println("ax,ay,az,gx,gy,gz,temp");
 }
 
 void loop() {
-  static bool imuReadyChecked = false;
-  static bool imuReady = false;
-
-  if (!imuReadyChecked) {
-    sensors_event_t accel, gyro, temp;
-    if (imu.getEvent(&accel, &gyro, &temp), true) {
-      imuReady = true;
-    }
-    imuReadyChecked = true;
+  if (!imuReady) {
+    delay(1000);
+    return;
   }
 
-  if (imuReady) {
-    printIMUData();
-  } else {
-    Serial.println("IMU not ready.");
-  }
+  sensors_event_t accel;
+  sensors_event_t gyro;
+  sensors_event_t temp;
 
-  delay(500);
+  imu.getEvent(&accel, &gyro, &temp);
+
+  // Clean CSV only
+  Serial.print(accel.acceleration.x, 4);
+  Serial.print(",");
+  Serial.print(accel.acceleration.y, 4);
+  Serial.print(",");
+  Serial.print(accel.acceleration.z, 4);
+  Serial.print(",");
+  Serial.print(gyro.gyro.x, 4);
+  Serial.print(",");
+  Serial.print(gyro.gyro.y, 4);
+  Serial.print(",");
+  Serial.print(gyro.gyro.z, 4);
+  Serial.print(",");
+  Serial.println(temp.temperature, 2);
+
+  delay(50); // ~20 Hz
 }
