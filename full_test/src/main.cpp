@@ -4,7 +4,7 @@
 #include "imu_manager.h"
 #include "data_buffer.h"
 
-static const uint32_t IMU_SAMPLE_INTERVAL_MS = 50;  // 20 Hz
+static const uint32_t IMU_SAMPLE_INTERVAL_MS = 50;
 
 bool imuReady  = false;
 bool wifiReady = false;
@@ -28,19 +28,7 @@ void handleClient(WiFiClient& client) {
 
 void setup() {
     Serial.begin(115200);
-
-    // Give USB CDC time to enumerate on ESP32-S3
-    delay(1500);
-
-    led.begin();
-    led.clear();
-    led.show();
-
-    // Optional wait so early prints are visible in monitor
-    unsigned long waitStart = millis();
-    while (!Serial && (millis() - waitStart < 3000)) {
-        delay(10);
-    }
+    delay(2000);
 
     Serial.println();
     Serial.println("=================================");
@@ -58,9 +46,6 @@ void setup() {
 
     if (wifiReady) {
         Serial.printf("[Main] Board IP address: %s\n", WiFi.localIP().toString().c_str());
-        Serial.printf("[Main] TCP server ready on port %d\n", TCP_PORT);
-        Serial.printf("[Main] Send GET to %s:%d\n",
-                      WiFi.localIP().toString().c_str(), TCP_PORT);
     } else {
         Serial.println("[Main] WiFi not connected.");
     }
