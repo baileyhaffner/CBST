@@ -1,33 +1,32 @@
-#include <arduino.h>
-#include <WiFi.h>
+#include <Arduino.h>
+#include "wifi_helper.h"
 
-// Replace with your network credentials
-const char* ssid = "bailey_phone";
-const char* password = "abcdefgh";
+const char* WIFI_SSID = "bailey_phone";
+const char* WIFI_PASSWORD = "abcdefgh";
+
+// Replace this with your computer's IP on the same Wi-Fi/hotspot network
+const char* TARGET_IP = "172.20.10.3";
+const uint16_t TARGET_PORT = 4210;
+
+WifiHelper wifi(WIFI_SSID, WIFI_PASSWORD, TARGET_IP, TARGET_PORT);
+
+unsigned long lastSend = 0;
+unsigned long counter = 0;
 
 void setup() {
-  Serial.begin(115200);
-  delay(10);
+    Serial.begin(115200);
+    delay(10);
 
-  // Connect to WiFi
-  Serial.println();
-  Serial.print("Connecting to ");
-  Serial.println(ssid);
-
-  WiFi.begin(ssid, password);
-
-  // Wait for connection
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-
-  Serial.println("");
-  Serial.println("WiFi connected.");
-  Serial.println("IP address: ");
-  Serial.println(WiFi.localIP()); // Prints ESP32 IP address
+    wifi.begin();
 }
 
 void loop() {
-  // Your code here
+    unsigned long now = millis();
+
+    if (now - lastSend >= 1000) {
+        lastSend = now;
+
+        String msg = "Hello from ESP32 packet #" + String(counter++);
+        wifi.sendTestPacket(msg);
+    }
 }
