@@ -1,64 +1,33 @@
-#include <Arduino.h>
+#include <arduino.h>
 #include <WiFi.h>
 
-const char* ssid = "Bailey’s iPhone 14 pro";
-const char* password = "truck101";
+// Replace with your network credentials
+const char* ssid = "bailey_phone";
+const char* password = "abcdefgh";
 
 void setup() {
   Serial.begin(115200);
-  delay(3000);
+  delay(10);
 
+  // Connect to WiFi
   Serial.println();
-  Serial.println("Starting scan...");
-
-  WiFi.persistent(false);
-  WiFi.mode(WIFI_STA);
-  WiFi.disconnect(true, true);
-  delay(500);
-
-  int n = WiFi.scanNetworks();
-  Serial.print("Networks found: ");
-  Serial.println(n);
-
-  for (int i = 0; i < n; i++) {
-    Serial.print(i + 1);
-    Serial.print(": '");
-    Serial.print(WiFi.SSID(i));
-    Serial.print("' RSSI=");
-    Serial.print(WiFi.RSSI(i));
-    Serial.print(" Ch=");
-    Serial.println(WiFi.channel(i));
-  }
-
-  WiFi.scanDelete();
-
-  Serial.println();
-  Serial.print("Connecting to '");
-  Serial.print(ssid);
-  Serial.println("'...");
+  Serial.print("Connecting to ");
+  Serial.println(ssid);
 
   WiFi.begin(ssid, password);
 
-  int attempts = 0;
-  while (WiFi.status() != WL_CONNECTED && attempts < 40) {
+  // Wait for connection
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.print(".");
-    attempts++;
   }
 
-  Serial.println();
-  Serial.print("Final status: ");
-  Serial.println(WiFi.status());
-
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("Connected!");
-    Serial.print("IP: ");
-    Serial.println(WiFi.localIP());
-  } else {
-    Serial.println("FAILED TO CONNECT");
-  }
+  Serial.println("");
+  Serial.println("WiFi connected.");
+  Serial.println("IP address: ");
+  Serial.println(WiFi.localIP()); // Prints ESP32 IP address
 }
 
 void loop() {
-  delay(1000);
+  // Your code here
 }
