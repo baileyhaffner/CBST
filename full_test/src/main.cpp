@@ -35,6 +35,8 @@ void setup() {
     Serial.println("ESP32-S3 IMU Logger starting...");
     Serial.println("=================================");
 
+    WiFi.useStaticBuffers(true);
+    
     wifiReady = wifiConnect();
     imuReady  = imuInit();
 

@@ -15,18 +15,36 @@ static WiFiClient tcpClient;
 bool wifiConnect() {
     Serial.printf("\n[WiFi] Connecting to SSID: %s\n", WIFI_SSID);
 
+    // Hard reset WiFi state
+    WiFi.persistent(false);
+    WiFi.disconnect(true, true);
+    WiFi.mode(WIFI_OFF);
+    delay(1000);
+
     WiFi.mode(WIFI_STA);
+    delay(500);
+
+    Serial.println("[WiFi] Starting connection...");
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
     uint32_t start = millis();
+    wl_status_t lastStatus = WiFi.status();
 
     while (WiFi.status() != WL_CONNECTED) {
+        wl_status_t status = WiFi.status();
+
+        if (status != lastStatus) {
+            Serial.printf("[WiFi] Status changed: %d\n", status);
+            lastStatus = status;
+        }
+
         Serial.print(".");
         delay(500);
 
         if (millis() - start > CONNECT_TIMEOUT_MS) {
             Serial.println("\n[WiFi] FAILED to connect.");
             Serial.printf("[WiFi] Final status: %d\n", WiFi.status());
+            Serial.printf("[WiFi] Current SSID seen by ESP: %s\n", WiFi.SSID().c_str());
             return false;
         }
     }
