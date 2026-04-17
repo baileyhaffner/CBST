@@ -2,69 +2,50 @@
 
 #include <Arduino.h>
 #include <WiFi.h>
+#include <Adafruit_NeoPixel.h>
 
-// ----------------------- EDIT THESE -----------------------
+// ----------------------- WIFI -----------------------
 static const char* WIFI_SSID     = "bailey_phone";
 static const char* WIFI_PASSWORD = "abcdefgh";
-// ----------------------------------------------------------
+// ----------------------------------------------------
 
-static const uint16_t TCP_PORT            = 5005;
-static const uint32_t CONNECT_TIMEOUT_MS  = 20000;
+static const uint16_t TCP_PORT           = 5005;
+static const uint32_t CONNECT_TIMEOUT_MS = 20000;
 
+// ----------------------- LED ------------------------
+// ProS3 onboard RGB LED is on GPIO 48
+static const int LED_PIN = 48;
+static const int LED_COUNT = 1;
+
+static Adafruit_NeoPixel led(LED_COUNT, LED_PIN, NEO_GRB + NEO_KHZ800);
+
+// ----------------------------------------------------
 static WiFiServer tcpServer(TCP_PORT);
 static WiFiClient tcpClient;
 
-// ----------------------------------------------------------
-// Scan networks multiple times to improve detection reliability
-// ----------------------------------------------------------
-void wifiScanNetworks() {
-    const int SCAN_ATTEMPTS = 3;
-
-    for (int attempt = 0; attempt < SCAN_ATTEMPTS; attempt++) {
-        Serial.printf("\n[WiFi] Scan attempt %d/%d...\n", attempt + 1, SCAN_ATTEMPTS);
-
-        // Longer scan: 500ms per channel (~6–7 seconds total)
-        int n = WiFi.scanNetworks(false, true, false, 500);
-
-        if (n <= 0) {
-            Serial.println("[WiFi] No networks found.");
-        } else {
-            Serial.printf("[WiFi] Found %d network(s):\n", n);
-
-            for (int i = 0; i < n; i++) {
-                Serial.printf("  %2d: %s | RSSI %d | Ch %d | %s\n",
-                              i + 1,
-                              WiFi.SSID(i).c_str(),
-                              WiFi.RSSI(i),
-                              WiFi.channel(i),
-                              (WiFi.encryptionType(i) == WIFI_AUTH_OPEN) ? "OPEN" : "SECURED");
-            }
-        }
-
-        delay(1000);  // short pause between scans
-    }
+// Helper to set LED color
+void setLED(uint8_t r, uint8_t g, uint8_t b) {
+    led.setPixelColor(0, led.Color(r, g, b));
+    led.show();
 }
 
-// ----------------------------------------------------------
-// Connect to WiFi
-// ----------------------------------------------------------
+// ----------------------------------------------------
+// Connect to WiFi with LED feedback
+// ----------------------------------------------------
 bool wifiConnect() {
-    WiFi.disconnect(true, true);
-    delay(1000);
+    Serial.printf("\n[WiFi] Connecting to SSID: %s\n", WIFI_SSID);
 
     WiFi.mode(WIFI_STA);
-    WiFi.setSleep(false);
+    delay(200);
 
-    // Run multiple scans before attempting connection
-    wifiScanNetworks();
-
-    Serial.printf("\n[WiFi] Connecting to SSID: %s\n", WIFI_SSID);
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
     uint32_t start = millis();
     wl_status_t lastStatus = WL_IDLE_STATUS;
 
-    while (millis() - start < CONNECT_TIMEOUT_MS) {
+    bool ledState = false;
+
+    while (WiFi.status() != WL_CONNECTED) {
         wl_status_t status = WiFi.status();
 
         if (status != lastStatus) {
@@ -72,31 +53,34 @@ bool wifiConnect() {
             lastStatus = status;
         }
 
-        if (status == WL_CONNECTED) {
-            Serial.println("[WiFi] Connected successfully.");
-            Serial.printf("[WiFi] IP address: %s\n", WiFi.localIP().toString().c_str());
-            Serial.printf("[WiFi] TCP server listening on port %d\n", TCP_PORT);
-            tcpServer.begin();
-            return true;
+        // Flash blue while connecting
+        ledState = !ledState;
+        if (ledState) setLED(0, 0, 50);   // dim blue
+        else          setLED(0, 0, 0);
+
+        if (millis() - start > CONNECT_TIMEOUT_MS) {
+            Serial.println("\n[WiFi] FAILED to connect.");
+
+            // Solid red on failure
+            setLED(50, 0, 0);
+            return false;
         }
 
-        Serial.print(".");
         delay(500);
+        Serial.print(".");
     }
 
-    Serial.println();
-    Serial.println("[WiFi] FAILED to connect.");
-    Serial.println("[WiFi] Likely causes:");
-    Serial.println("  - hotspot not visible on 2.4 GHz");
-    Serial.println("  - wrong SSID/password");
-    Serial.println("  - unsupported hotspot security mode");
+    Serial.printf("\n[WiFi] Connected! IP: %s\n", WiFi.localIP().toString().c_str());
+    Serial.printf("[WiFi] TCP server listening on port %d\n", TCP_PORT);
 
-    return false;
+    // Solid green on success
+    setLED(0, 50, 0);
+
+    tcpServer.begin();
+    return true;
 }
 
-// ----------------------------------------------------------
-// Handle incoming client connections
-// ----------------------------------------------------------
+// ----------------------------------------------------
 WiFiClient wifiGetClient() {
     if (tcpClient && tcpClient.connected()) {
         return tcpClient;
@@ -105,7 +89,7 @@ WiFiClient wifiGetClient() {
     WiFiClient incoming = tcpServer.accept();
     if (incoming) {
         tcpClient = incoming;
-        Serial.printf("[WiFi] Client connected from: %s\n",
+        Serial.printf("[WiFi] Client connected: %s\n",
                       tcpClient.remoteIP().toString().c_str());
     }
 

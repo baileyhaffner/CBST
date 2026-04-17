@@ -32,6 +32,10 @@ void setup() {
     // Give USB CDC time to enumerate on ESP32-S3
     delay(1500);
 
+    led.begin();
+    led.clear();
+    led.show();
+
     // Optional wait so early prints are visible in monitor
     unsigned long waitStart = millis();
     while (!Serial && (millis() - waitStart < 3000)) {
