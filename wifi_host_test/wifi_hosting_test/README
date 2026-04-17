@@ -1,0 +1,76 @@
+# ProS3 WiFi Test — Setup Guide
+
+## Project Structure
+Place files like this inside your PlatformIO project folder:
+
+```
+my_pros3_project/
+├── platformio.ini        ← root of project
+└── src/
+    └── main.cpp
+```
+
+## Steps
+
+1. **Install PlatformIO** in VSCode (Extensions → search "PlatformIO IDE")
+
+2. **Create a new project**
+   - PlatformIO Home → New Project
+   - Board: search `UM ProS3` — select "Unexpected Maker ProS3"
+   - Framework: Arduino
+
+3. **Replace the generated files** with the ones provided:
+   - Copy `platformio.ini` → project root (replace existing)
+   - Copy `main.cpp` → `src/main.cpp` (replace existing)
+
+4. **Edit your credentials** in `main.cpp`:
+   ```cpp
+   const char* WIFI_SSID     = "YOUR_WIFI_SSID";
+   const char* WIFI_PASSWORD = "YOUR_WIFI_PASSWORD";
+   ```
+
+5. **Flash & Monitor**
+   - Click the → Upload button (or `Ctrl+Alt+U`)
+   - Once flashed, open Serial Monitor (`Ctrl+Alt+M`) at **115200 baud**
+   - Press the Reset button on the board if needed
+
+## Expected Serial Output (success)
+
+```
+==============================================
+  WiFi Connection Test — ProS3 ESP32-S3
+==============================================
+  SSID     : MyNetwork
+  MAC Addr : AA:BB:CC:DD:EE:FF
+----------------------------------------------
+  Connecting........
+  [OK] Connected!
+----------------------------------------------
+  IP Address : 192.168.1.42
+  Subnet     : 255.255.255.0
+  Gateway    : 192.168.1.1
+  DNS        : 192.168.1.1
+  RSSI       : -52 dBm
+==============================================
+[STATUS] Connected | IP: 192.168.1.42 | RSSI: -52 dBm | Uptime: 5s
+[STATUS] Connected | IP: 192.168.1.42 | RSSI: -51 dBm | Uptime: 10s
+```
+
+## LED Status
+| Colour | Meaning          |
+|--------|-----------------|
+| Yellow | Connecting...    |
+| Green  | Connected ✓      |
+| Red    | Connection lost  |
+
+## Troubleshooting
+- **"Board not found"** → In PlatformIO, run: `pio pkg install --tool tool-esptoolpy`
+- **Upload fails** → Hold the BOOT button on the ProS3 while clicking Upload, release after "Connecting..."
+- **Wrong port** → PlatformIO → Devices, confirm the correct COM/tty port is selected
+- **RSSI worse than -70 dBm** → Move closer to router for testing
+
+## Next Steps (IMU integration)
+Once this test passes, the next build will:
+1. Read IMU data (e.g. via I2C/SPI) and buffer it on-board
+2. Open a TCP socket server on the ESP32
+3. Send buffered data to a Python script on your PC on demand

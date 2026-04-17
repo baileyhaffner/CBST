@@ -21,6 +21,10 @@ try:
             line = line.strip()
             if line:
                 print(line)
+                print("\n")
+                      for i in j:
+                      \lambda while True,
+
 
 except KeyboardInterrupt:
     pass
