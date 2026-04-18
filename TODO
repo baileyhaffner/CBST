@@ -1,0 +1,27 @@
+Notes:
+Struggling with wifi so lets forget that and just get all the data logging from both IMU's.
+    We can plug the board in to extract data for now and implement wifi last.
+
+Tasks:
+1. integrate both IMU's
+    1.1 setup hardware pins (second IMU needs different address)
+    1.2 setup code in imu_manager.h 
+    1.3 confirm serial output is printing data for each IMU seperately
+    1.4 max out data rate for best resolution 
+2. save and compare function 
+    2.1 setup button to start and stop data logging 
+    2.2 setup buffer to save csv data 
+    2.3 setup 'optimal-data' and save in buffer
+    2.4 run kalman filtering and filtering algorithm 
+    2.5 integrate haptic feedback (LED's for now until we work out motor drivers)
+3. data transfer for HMI
+    3.1 send data over serial com port
+    3.2 import and log data into python script 
+    3.3 code HMI (use python matplotlib) for 'big-screen' comparison analysis
+    3.4 integrate remote data transfer either using board as access point or server (not mission critical as we can just use COM for prototype)
+4. finishing touches 
+    4.1 3D print ESP32 and battery housing
+    4.2 strap everything onto arm band 
+    4.3 make sure glove has button and second IMU attached using mutli-core data wires for flexibility (I have tons of what we need)
+
+    

@@ -1,20 +1,8 @@
 /**
  * =============================================================
- *  WiFi Connection Test — Unexpected Maker ProS3 (ESP32-S3)
- *  Framework : Arduino (PlatformIO)
- *
- *  What this does:
- *    1. Connects to your WiFi network (Station mode)
- *    2. Reports IP address, signal strength (RSSI), and MAC
- *       over Serial Monitor at 115200 baud
- *    3. Pings the gateway every 5 s so you can see live status
- *    4. Blinks the onboard RGB LED:
- *         - Yellow  = connecting
- *         - Green   = connected
- *         - Red     = connection lost
- *
- *  Next steps after this test passes:
- *    → Add IMU reads + TCP/UDP socket to stream data to PC
+ claude and chatGPT wont help.
+ Trying to use station mode
+ it works sometimes but rarely
  * =============================================================
  */
 
@@ -22,14 +10,14 @@
 #include <WiFi.h>
 #include <Adafruit_NeoPixel.h>   // Built into ESP32 Arduino core for ProS3
 
-// ---------------------------------------------------------------
-//  !! EDIT THESE TWO LINES BEFORE FLASHING !!
-// ---------------------------------------------------------------
-const char* WIFI_SSID     = "bailey_phone";
-const char* WIFI_PASSWORD = "abcdefgh";
-// ---------------------------------------------------------------
+// ---------------------------------------------
+//  SSID and Password
+// -----------------------------------------------------------
+const char* WIFI_SSID     = "Telstra68048F";
+const char* WIFI_PASSWORD = "err2d583e6";
+// --------------------------------------------------------
 
-// ProS3 onboard RGB LED is on GPIO 18, controlled via NeoPixel
+
 #define RGB_PIN        18
 #define RGB_PWR_PIN    17          // Must be HIGH to power the LED
 #define NUM_PIXELS     1
@@ -59,6 +47,7 @@ void ledRed()     { setLED(40,  0,   0); }
 //  Connect to WiFi — blocks until connected or timeout
 //  Returns true if successful
 // ---------------------------------------------------------------
+
 bool connectWiFi() {
     Serial.println();
     Serial.println("==============================================");
@@ -73,6 +62,8 @@ bool connectWiFi() {
     WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 
     uint32_t start = millis();
+
+    // Put in the ccdr? try next monday 
     uint8_t  dots  = 0;
 
     while (WiFi.status() != WL_CONNECTED) {
