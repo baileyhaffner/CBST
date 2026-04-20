@@ -13,8 +13,8 @@
 // ---------------------------------------------
 //  SSID and Password
 // -----------------------------------------------------------
-const char* WIFI_SSID     = "Telstra68048F";
-const char* WIFI_PASSWORD = "err2d583e6";
+const char* WIFI_SSID     = "Loading...";
+const char* WIFI_PASSWORD = "26060400";
 // --------------------------------------------------------
 
 
