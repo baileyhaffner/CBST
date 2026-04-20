@@ -1,0 +1,7 @@
+# Claude Code configuration and agents
+.claude/
+
+# Other common ignores
+node_modules/
+.env
+.DS_Store
