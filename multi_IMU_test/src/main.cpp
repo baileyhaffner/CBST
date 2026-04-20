@@ -5,6 +5,7 @@
 
 static const int SDA_PIN = 8;
 static const int SCL_PIN = 9;
+static const int BUTTON_PIN = 41;
 
 // Two IMU objects, one for each address
 Adafruit_LSM6DSOX imu6A;
@@ -128,6 +129,9 @@ void setup() {
   Wire.begin(SDA_PIN, SCL_PIN);
   Wire.setClock(100000);
 
+  // Setup button
+  pinMode(BUTTON_PIN, INPUT);
+
   scanI2C();
 
   if (!initIMUs()) {
@@ -137,7 +141,7 @@ void setup() {
     return;
   }
 
-  // CSV header for Python
+  // CSV header
   Serial.println("imu,ax,ay,az,gx,gy,gz,temp");
 }
 
@@ -147,14 +151,23 @@ void loop() {
     return;
   }
 
-  // Alternate between IMUs each loop pass, clearly labeled
-  if (imu6AReady) {
-    printIMUData(imu6A, "IMU_0x6A");
-  }
+  int buttonState = digitalRead(BUTTON_PIN);
 
-  if (imu6BReady) {
-    printIMUData(imu6B, "IMU_0x6B");
-  }
+  // Only log when button is HIGH
+  if (buttonState == HIGH) {
 
-  delay(50);
+    if (imu6AReady) {
+      printIMUData(imu6A, "IMU_0x6A");
+    }
+
+    if (imu6BReady) {
+      printIMUData(imu6B, "IMU_0x6B");
+    }
+
+    delay(50);
+
+  } else {
+    // Idle when button not pressed
+    delay(10);
+  }
 }
