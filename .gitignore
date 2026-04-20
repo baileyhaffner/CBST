@@ -1,5 +1,6 @@
 # Claude Code configuration and agents
 .claude/
+CLAUDE.md
 
 # Other common ignores
 node_modules/
