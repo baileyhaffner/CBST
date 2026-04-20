@@ -156,5 +156,5 @@ void loop() {
     printIMUData(imu6B, "IMU_0x6B");
   }
 
-  delay(500);
+  delay(50);
 }
