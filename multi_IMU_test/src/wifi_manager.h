@@ -11,10 +11,10 @@
 // ---------------------------------------------------------------------------
 // Credentials — fill in SSID and PASSWORD manually before flashing
 // ---------------------------------------------------------------------------
-static constexpr const char* WIFI_SSID          = "YOUR_SSID";
-static constexpr const char* WIFI_PASSWORD       = "YOUR_PASSWORD";
+static constexpr const char* WIFI_SSID          = "bailey_phone";
+static constexpr const char* WIFI_PASSWORD       = "abcdefgh";
 static constexpr uint16_t    WEBSERVER_PORT      = 80;
-static constexpr uint32_t    CONNECT_TIMEOUT_MS  = 15000;
+static constexpr uint32_t    CONNECT_TIMEOUT_MS  = 45000;
 
 // ---------------------------------------------------------------------------
 // Data structures (static allocation, no heap)
