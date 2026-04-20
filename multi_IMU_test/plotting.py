@@ -1,92 +1,104 @@
 import serial
-import matplotlib.pyplot as plt
-from collections import deque
+import csv
+import time
 
 # ==== CONFIG ====
-PORT = 'COM6'       # change if needed
+PORT = 'COM6'          # change if needed
 BAUD = 115200
-MAX_POINTS = 200    # how many samples to keep on screen
+OUTPUT_FILE = 'imu_dual_log.csv'
 
-# ==== SERIAL ====
+# ==== OPEN SERIAL ====
 ser = serial.Serial(PORT, BAUD, timeout=1)
+time.sleep(2)  # allow board/serial to settle
 
-# ==== DATA STORAGE ====
-imuA_ax = deque(maxlen=MAX_POINTS)
-imuA_ay = deque(maxlen=MAX_POINTS)
-imuA_az = deque(maxlen=MAX_POINTS)
+# ==== OPEN CSV ====
+file = open(OUTPUT_FILE, mode='w', newline='')
+writer = csv.writer(file)
 
-imuB_ax = deque(maxlen=MAX_POINTS)
-imuB_ay = deque(maxlen=MAX_POINTS)
-imuB_az = deque(maxlen=MAX_POINTS)
+writer.writerow([
+    "time",
+    "ax_A", "ay_A", "az_A", "gx_A", "gy_A", "gz_A", "temp_A",
+    "ax_B", "ay_B", "az_B", "gx_B", "gy_B", "gz_B", "temp_B"
+])
 
-# ==== PLOTTING SETUP ====
-plt.ion()
-fig, (ax1, ax2) = plt.subplots(2, 1)
+print(f"Logging from {PORT} to {OUTPUT_FILE}")
+print("Press Ctrl+C to stop.\n")
 
-# IMU A lines
-lineA_x, = ax1.plot([], [], label='ax')
-lineA_y, = ax1.plot([], [], label='ay')
-lineA_z, = ax1.plot([], [], label='az')
-ax1.set_title("IMU 0x6A")
-ax1.legend()
+imuA_data = None
+imuB_data = None
 
-# IMU B lines
-lineB_x, = ax2.plot([], [], label='ax')
-lineB_y, = ax2.plot([], [], label='ay')
-lineB_z, = ax2.plot([], [], label='az')
-ax2.set_title("IMU 0x6B")
-ax2.legend()
+def parse_line(line):
+    parts = [p.strip() for p in line.split(",")]
 
-def update_plot():
-    # Update IMU A
-    lineA_x.set_data(range(len(imuA_ax)), imuA_ax)
-    lineA_y.set_data(range(len(imuA_ay)), imuA_ay)
-    lineA_z.set_data(range(len(imuA_az)), imuA_az)
-    ax1.relim()
-    ax1.autoscale_view()
+    if len(parts) != 8:
+        return None, f"Skipped: expected 8 fields, got {len(parts)}"
 
-    # Update IMU B
-    lineB_x.set_data(range(len(imuB_ax)), imuB_ax)
-    lineB_y.set_data(range(len(imuB_ay)), imuB_ay)
-    lineB_z.set_data(range(len(imuB_az)), imuB_az)
-    ax2.relim()
-    ax2.autoscale_view()
+    imu_id = parts[0]
 
-    plt.pause(0.01)
+    if imu_id not in ("IMU_0x6A", "IMU_0x6B"):
+        return None, f"Skipped: unknown IMU label '{imu_id}'"
 
-print("Listening to serial...")
-
-# ==== MAIN LOOP ====
-while True:
     try:
-        line = ser.readline().decode('utf-8').strip()
+        values = [float(x) for x in parts[1:]]
+    except ValueError:
+        return None, "Skipped: numeric conversion failed"
 
-        # Skip header or empty lines
-        if not line or line.startswith("imu"):
+    return (imu_id, values), None
+
+try:
+    while True:
+        raw = ser.readline()
+
+        if not raw:
             continue
 
-        parts = line.split(',')
-
-        if len(parts) != 8:
+        try:
+            line = raw.decode("utf-8", errors="replace").strip()
+        except Exception as e:
+            print("Decode error:", e)
             continue
 
-        imu_id = parts[0]
-        ax_val = float(parts[1])
-        ay_val = float(parts[2])
-        az_val = float(parts[3])
+        if not line:
+            continue
 
-        # Route to correct IMU
+        print("RAW:", line)
+
+        # Skip obvious non-data lines
+        if line.startswith("imu,"):
+            print("Detected CSV header")
+            continue
+
+        result, error = parse_line(line)
+
+        if error:
+            print(error)
+            continue
+
+        imu_id, values = result
+
         if imu_id == "IMU_0x6A":
-            imuA_ax.append(ax_val)
-            imuA_ay.append(ay_val)
-            imuA_az.append(az_val)
+            imuA_data = values
+            print("Stored IMU 0x6A sample")
 
         elif imu_id == "IMU_0x6B":
-            imuB_ax.append(ax_val)
-            imuB_ay.append(ay_val)
-            imuB_az.append(az_val)
+            imuB_data = values
+            print("Stored IMU 0x6B sample")
 
-        update_plot()
+        if imuA_data is not None and imuB_data is not None:
+            timestamp = time.time()
+            row = [timestamp] + imuA_data + imuB_data
+            writer.writerow(row)
+            file.flush()
 
-    except Exception as e:
-        print("Error:", e)
+            print("WROTE CSV ROW")
+
+            imuA_data = None
+            imuB_data = None
+
+except KeyboardInterrupt:
+    print("\nLogging stopped by user.")
+
+finally:
+    file.close()
+    ser.close()
+    print("Serial port and file closed.")
