@@ -2,10 +2,15 @@
 #include <Wire.h>
 #include <Adafruit_LSM6DSOX.h>
 #include <Adafruit_Sensor.h>
+#include "wifi_manager.h"
 
-static const int SDA_PIN = 8;
-static const int SCL_PIN = 9;
-static const int BUTTON_PIN = 41;
+static constexpr int SDA_PIN    = 8;
+static constexpr int SCL_PIN    = 9;
+static constexpr int BUTTON_PIN = 41;
+
+static constexpr uint32_t IMU_READ_INTERVAL_MS  = 50;
+static constexpr uint32_t IMU_IDLE_INTERVAL_MS  = 10;
+static constexpr uint32_t IMU_ERROR_INTERVAL_MS = 1000;
 
 // Two IMU objects, one for each address
 Adafruit_LSM6DSOX imu6A;
@@ -70,7 +75,7 @@ bool initIMUs() {
   Serial.println("Trying to initialise LSM6DSOX sensors");
 
   // Try 0x6A
-  if (found6A || true) {
+  if (found6A) {
     if (imu6A.begin_I2C(0x6A)) {
       setupSingleIMUConfig(imu6A);
       imu6AReady = true;
@@ -81,7 +86,7 @@ bool initIMUs() {
   }
 
   // Try 0x6B
-  if (found6B || true) {
+  if (found6B) {
     if (imu6B.begin_I2C(0x6B)) {
       setupSingleIMUConfig(imu6B);
       imu6BReady = true;
@@ -92,31 +97,6 @@ bool initIMUs() {
   }
 
   return imu6AReady || imu6BReady;
-}
-
-void printIMUData(Adafruit_LSM6DSOX &imu, const char *label) {
-  sensors_event_t accel;
-  sensors_event_t gyro;
-  sensors_event_t temp;
-
-  imu.getEvent(&accel, &gyro, &temp);
-
-  // Labeled CSV row
-  Serial.print(label);
-  Serial.print(",");
-  Serial.print(accel.acceleration.x, 4);
-  Serial.print(",");
-  Serial.print(accel.acceleration.y, 4);
-  Serial.print(",");
-  Serial.print(accel.acceleration.z, 4);
-  Serial.print(",");
-  Serial.print(gyro.gyro.x, 4);
-  Serial.print(",");
-  Serial.print(gyro.gyro.y, 4);
-  Serial.print(",");
-  Serial.print(gyro.gyro.z, 4);
-  Serial.print(",");
-  Serial.println(temp.temperature, 2);
 }
 
 void setup() {
@@ -141,33 +121,57 @@ void setup() {
     return;
   }
 
+  wifiInit();
+
   // CSV header
   Serial.println("imu,ax,ay,az,gx,gy,gz,temp");
 }
 
 void loop() {
-  if (!imu6AReady && !imu6BReady) {
-    delay(1000);
-    return;
-  }
+    wifiHandle();
 
-  int buttonState = digitalRead(BUTTON_PIN);
-
-  // Only log when button is HIGH
-  if (buttonState == HIGH) {
-
-    if (imu6AReady) {
-      printIMUData(imu6A, "IMU_0x6A");
+    if (!imu6AReady && !imu6BReady) {
+        static uint32_t lastErrorLog = 0;
+        if (millis() - lastErrorLog >= IMU_ERROR_INTERVAL_MS) {
+            lastErrorLog = millis();
+            Serial.printf("[Main] No IMUs ready\n");
+        }
+        return;
     }
 
-    if (imu6BReady) {
-      printIMUData(imu6B, "IMU_0x6B");
+    static uint32_t lastRead = 0;
+    int buttonState = digitalRead(BUTTON_PIN);
+    uint32_t interval = (buttonState == HIGH) ? IMU_READ_INTERVAL_MS : IMU_IDLE_INTERVAL_MS;
+
+    if (millis() - lastRead >= interval) {
+        lastRead = millis();
+
+        if (imu6AReady) {
+            sensors_event_t accel, gyro, temp;
+            imu6A.getEvent(&accel, &gyro, &temp);
+            wifiUpdateIMU("IMU_0x6A",
+                          accel.acceleration.x, accel.acceleration.y, accel.acceleration.z,
+                          gyro.gyro.x, gyro.gyro.y, gyro.gyro.z,
+                          temp.temperature);
+            if (buttonState == HIGH) {
+                Serial.printf("IMU_0x6A,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.2f\n",
+                    accel.acceleration.x, accel.acceleration.y, accel.acceleration.z,
+                    gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, temp.temperature);
+            }
+        }
+
+        if (imu6BReady) {
+            sensors_event_t accel, gyro, temp;
+            imu6B.getEvent(&accel, &gyro, &temp);
+            wifiUpdateIMU("IMU_0x6B",
+                          accel.acceleration.x, accel.acceleration.y, accel.acceleration.z,
+                          gyro.gyro.x, gyro.gyro.y, gyro.gyro.z,
+                          temp.temperature);
+            if (buttonState == HIGH) {
+                Serial.printf("IMU_0x6B,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.2f\n",
+                    accel.acceleration.x, accel.acceleration.y, accel.acceleration.z,
+                    gyro.gyro.x, gyro.gyro.y, gyro.gyro.z, temp.temperature);
+            }
+        }
     }
-
-    delay(50);
-
-  } else {
-    // Idle when button not pressed
-    delay(10);
-  }
 }
