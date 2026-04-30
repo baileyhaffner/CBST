@@ -1,9 +1,9 @@
 #include <Arduino.h>
-#include <WiFi.h>   
+#include <WiFi.h>
 #include <vector>
 
 #include "imu.h"
-#include "wifi.h"
+#include "wifi_manager.h"
 
 std::vector<String> csvBuffer;
 
