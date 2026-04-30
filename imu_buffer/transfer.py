@@ -3,12 +3,11 @@ import serial
 import time
 from pathlib import Path
 
-
 def main():
     parser = argparse.ArgumentParser(description="Read stored IMU log from ESP32 over serial.")
-    parser.add_argument("--port", required=True, help="Serial port, e.g. COM6 on Windows or /dev/ttyUSB0 on Linux")
+    parser.add_argument("--port", required=True)
     parser.add_argument("--baud", type=int, default=115200)
-    parser.add_argument("--out", default="imu_log.csv")
+    parser.add_argument("--out", default="data.csv")
     parser.add_argument("--clear-after", action="store_true")
     args = parser.parse_args()
 
