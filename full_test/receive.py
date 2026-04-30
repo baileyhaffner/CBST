@@ -11,7 +11,7 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
 
     recording = False
 
-    with open(filename, "w", newline="") as file:
+    with open(filename, "w") as file:
         while True:
             data = s.recv(1024).decode(errors="ignore")
 
@@ -19,13 +19,14 @@ with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 break
 
             for line in data.splitlines():
+
                 if line == "START_CSV":
                     recording = True
                     print("Receiving CSV...")
                     continue
 
                 if line == "END_CSV":
-                    print(f"Saved CSV to {filename}")
+                    print("Saved CSV!")
                     recording = False
                     break
 
