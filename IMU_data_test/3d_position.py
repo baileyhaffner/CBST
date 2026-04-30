@@ -14,8 +14,8 @@ MAX_TRAIL_POINTS = 1000
 # ----------------------------
 # FIXED DISPLAY LIMITS
 # ----------------------------
-SIGNAL_Y_MIN = -20
-SIGNAL_Y_MAX = 20
+SIGNAL_Y_MIN = -2
+SIGNAL_Y_MAX = 2
 
 X_LIM = (-2.0, 2.0)
 Y_LIM = (-2.0, 2.0)
@@ -71,7 +71,7 @@ pos_z = deque([0.0], maxlen=MAX_TRAIL_POINTS)
 
 # Bias calibration
 calibration_samples = []
-CALIBRATION_COUNT = 100
+CALIBRATION_COUNT = 999999
 accel_bias = np.array([0.0, 0.0, 0.0], dtype=float)
 bias_ready = False
 

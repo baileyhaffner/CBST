@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Arduino.h>
+#include <WiFi.h>   
 #include <vector>
 
 const char* AP_SSID = "ProS3_Test_Network";
@@ -22,20 +23,16 @@ void wifiInit() {
 
     if (apStarted) {
         Serial.println("[WiFi] Access Point started successfully.");
-        Serial.print("[WiFi] Network name: ");
+        Serial.print("[WiFi] SSID: ");
         Serial.println(AP_SSID);
-        Serial.print("[WiFi] Password: ");
-        Serial.println(AP_PASSWORD);
-        Serial.print("[WiFi] ESP32 IP address: ");
+        Serial.print("[WiFi] IP: ");
         Serial.println(WiFi.softAPIP());
     } else {
-        Serial.println("[WiFi] ERROR: Failed to start Access Point.");
+        Serial.println("[WiFi] ERROR: AP failed to start");
     }
 
     wifiServer.begin();
-
-    Serial.print("[WiFi] TCP server started on port ");
-    Serial.println(SERVER_PORT);
+    Serial.println("[WiFi] TCP server started on port 3333");
 }
 
 void wifiHandle() {
@@ -44,7 +41,7 @@ void wifiHandle() {
 
         if (newClient) {
             wifiClient = newClient;
-            Serial.println("[WiFi] Computer/client connected.");
+            Serial.println("[WiFi] Client connected");
         }
     }
 }
@@ -54,26 +51,21 @@ bool wifiClientConnected() {
 }
 
 void wifiSendCSVBuffer(const std::vector<String>& csvBuffer) {
-    wifiHandle();
-
     if (!wifiClientConnected()) {
-        Serial.println("[WiFi] ERROR: No TCP client connected. CSV buffer was not sent.");
-        Serial.println("[WiFi] Connect computer to Wi-Fi, then connect TCP client to 192.168.4.1:3333.");
+        Serial.println("[WiFi] ERROR: No client connected");
         return;
     }
 
-    Serial.println("[WiFi] Sending CSV buffer...");
+    Serial.println("[WiFi] Sending CSV...");
 
     wifiClient.println("START_CSV");
     wifiClient.println("sample,time_ms,imu,ax,ay,az,gx,gy,gz,temp");
 
     for (const String& line : csvBuffer) {
         wifiClient.println(line);
-        delay(1);
     }
 
     wifiClient.println("END_CSV");
 
-    Serial.print("[WiFi] CSV transmission complete. Lines sent: ");
-    Serial.println(csvBuffer.size());
+    Serial.println("[WiFi] CSV sent");
 }
