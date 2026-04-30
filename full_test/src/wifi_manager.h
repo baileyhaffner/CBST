@@ -4,38 +4,34 @@
 #include <WiFi.h>
 #include <vector>
 
-// Wi-Fi config
 const char* AP_SSID = "ProS3_Test_Network";
-const char* AP_PASSWORD = "12345678";
+const char* AP_PASSWORD = "";   // open network for testing
 
-// TCP server
 const uint16_t SERVER_PORT = 3333;
-WiFiServer server(SERVER_PORT);
 
-// Global client
+WiFiServer server(SERVER_PORT);
 WiFiClient client;
 
-// Timing for test/debug
-unsigned long lastSendTime = 0;
-const unsigned long sendInterval = 1000;
-
-// =======================
-// INIT
-// =======================
 void wifiInit() {
     Serial.println();
     Serial.println("[WiFi] Starting ESP32 Access Point...");
 
     WiFi.mode(WIFI_AP);
+    WiFi.setSleep(false);
+    delay(1000);
 
-    bool apStarted = WiFi.softAP(AP_SSID, AP_PASSWORD);
+    bool apStarted = WiFi.softAP(
+        AP_SSID,
+        AP_PASSWORD,
+        6,        // try 1, 6, or 11
+        false,    // not hidden
+        4
+    );
 
     if (apStarted) {
         Serial.println("[WiFi] Access Point started.");
         Serial.print("[WiFi] SSID: ");
         Serial.println(AP_SSID);
-        Serial.print("[WiFi] Password: ");
-        Serial.println(AP_PASSWORD);
         Serial.print("[WiFi] IP: ");
         Serial.println(WiFi.softAPIP());
     } else {
@@ -43,41 +39,39 @@ void wifiInit() {
     }
 
     server.begin();
-
     Serial.print("[WiFi] TCP server started on port ");
     Serial.println(SERVER_PORT);
 }
 
-// =======================
-// HANDLE
-// =======================
 void wifiHandle() {
+    static uint32_t lastStatusPrint = 0;
+
     if (!client || !client.connected()) {
         client = server.available();
 
         if (client) {
-            Serial.println("[WiFi] Client connected");
+            Serial.println("[WiFi] TCP client connected");
         }
     }
 
-    if (client && client.connected()) {
-        unsigned long currentTime = millis();
+    if (millis() - lastStatusPrint >= 5000) {
+        lastStatusPrint = millis();
 
-        if (currentTime - lastSendTime >= sendInterval) {
-            lastSendTime = currentTime;
+        Serial.print("[WiFi] Connected Wi-Fi stations: ");
+        Serial.println(WiFi.softAPgetStationNum());
 
-            client.println("test working");
-            Serial.println("[WiFi] Sent: test working");
-        }
+        Serial.print("[WiFi] AP IP: ");
+        Serial.println(WiFi.softAPIP());
     }
 }
 
-// =======================
-// SEND CSV BUFFER
-// =======================
+bool wifiClientConnected() {
+    return client && client.connected();
+}
+
 void wifiSendCSVBuffer(const std::vector<String>& csvBuffer) {
-    if (!client || !client.connected()) {
-        Serial.println("[WiFi] ERROR: No client connected");
+    if (!wifiClientConnected()) {
+        Serial.println("[WiFi] ERROR: No TCP client connected");
         return;
     }
 
@@ -93,5 +87,6 @@ void wifiSendCSVBuffer(const std::vector<String>& csvBuffer) {
 
     client.println("END_CSV");
 
-    Serial.println("[WiFi] CSV sent successfully");
+    Serial.print("[WiFi] CSV sent. Lines: ");
+    Serial.println(csvBuffer.size());
 }
