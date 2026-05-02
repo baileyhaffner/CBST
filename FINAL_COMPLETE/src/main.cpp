@@ -18,6 +18,8 @@ static constexpr uint32_t IMU_SAMPLING_RATE_HZ = 833;  // from the data sheet th
 
 // every sample is doing an I2C read, formatting floats into CSV, and writting to SPIFFS.
 // flush() is only called at the end of the session after the button is released. (different to our last code)
+// I think the best way to pull more speed would be to buffer a bunch of samples in RAM and then write them all at once, but this is good enough for now and much simpler.
+// Not sure how it works but FIFO with buffering on the IMU could be a lot better to max out the I2C bus and reduce the time spent doing I2C reads. 
 
 // ================================
 // Managers

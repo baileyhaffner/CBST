@@ -87,12 +87,32 @@ matched["gyro_percent_difference"] = (
 ) * 100
 
 # ================================
+# Estimate release angle from gyroscope data
+# ================================
+matched["dt"] = matched["time_s"].diff().fillna(0)
+
+matched["gyro_angle_recorded_rad"] = np.cumsum(matched["gyro_recorded"] * matched["dt"])
+matched["gyro_angle_comparison_rad"] = np.cumsum(matched["gyro_comparison"] * matched["dt"])
+
+matched["gyro_angle_recorded_deg"] = np.degrees(matched["gyro_angle_recorded_rad"])
+matched["gyro_angle_comparison_deg"] = np.degrees(matched["gyro_angle_comparison_rad"])
+
+release_angle_recorded = matched["gyro_angle_recorded_deg"].iloc[-1]
+release_angle_comparison = matched["gyro_angle_comparison_deg"].iloc[-1]
+release_angle_difference = release_angle_recorded - release_angle_comparison
+
+# ================================
 # Analyse first 50% of recording
 # ================================
 half_time = matched["time_s"].max() * 0.5
 early_data = matched[matched["time_s"] <= half_time]
 
 analysis_lines = []
+
+analysis_lines.append(f"Recorded release angle: {release_angle_recorded:.1f} degrees")
+analysis_lines.append(f"Comparison release angle: {release_angle_comparison:.1f} degrees")
+analysis_lines.append(f"Release angle difference: {release_angle_difference:.1f} degrees")
+analysis_lines.append("")
 
 early_accel_difference = early_data["accel_percent_difference"].mean()
 early_gyro_difference = early_data["gyro_percent_difference"].mean()
