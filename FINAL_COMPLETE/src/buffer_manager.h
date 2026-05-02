@@ -54,7 +54,6 @@ public:
         }
 
         logFile.println("timestamp_ms,sample_number,imu,ax,ay,az,gx,gy,gz,temp");
-        logFile.flush();
     }
 
     // ================================
@@ -85,8 +84,6 @@ public:
             d.gz,
             d.temp
         );
-
-        logFile.flush();
     }
 
     // ================================

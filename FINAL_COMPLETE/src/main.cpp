@@ -13,8 +13,11 @@ static constexpr int SDA_PIN    = 8;
 static constexpr int SCL_PIN    = 9;
 static constexpr int BUTTON_PIN = 41;
 
-static constexpr uint32_t IMU_LOGGING_RATE_HZ  = 200;
-static constexpr uint32_t IMU_SAMPLING_RATE_HZ = 833;
+static constexpr uint32_t IMU_LOGGING_RATE_HZ  = 400;  // the SPIFFS write speed is struggling past 400Hz and getting a lot of drop.
+static constexpr uint32_t IMU_SAMPLING_RATE_HZ = 833;  // from the data sheet this is the max data rate for this IMU
+
+// every sample is doing an I2C read, formatting floats into CSV, and writting to SPIFFS.
+// flush() is only called at the end of the session after the button is released. (different to our last code)
 
 // ================================
 // Managers
