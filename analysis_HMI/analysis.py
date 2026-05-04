@@ -5,8 +5,8 @@ import numpy as np
 # ================================
 # Load CSV files
 # ================================
-csv_file = "data.csv"
-comparison_file = "comparison.csv"
+csv_file = "too_high.csv"
+comparison_file = "reference.csv"
 
 df = pd.read_csv(csv_file)
 comp = pd.read_csv(comparison_file)
@@ -29,7 +29,7 @@ comp["gyro_mag"] = np.sqrt(comp["gx"] ** 2 + comp["gy"] ** 2 + comp["gz"] ** 2)
 # ================================
 # Smooth data to reduce noise
 # ================================
-smooth_window = 10
+smooth_window = 5
 
 df["accel_mag_smooth"] = df["accel_mag"].rolling(smooth_window, center=True, min_periods=1).mean()
 df["gyro_mag_smooth"] = df["gyro_mag"].rolling(smooth_window, center=True, min_periods=1).mean()

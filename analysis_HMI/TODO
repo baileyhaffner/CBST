@@ -1,0 +1,12 @@
+get rid of smooth data formula and use better filtering algroythm to reduce spiking (maybe a threshold max?)
+
+USe better comparison formula. 
+
+Keep MATPLOTLIB plots as is
+
+Increase word analysis to be nmore descriptive of the last part of the data (last 200 data points specifically)
+
+HMI will show:
+    ball release angle 
+    ball speed at release
+    Rotation speed
