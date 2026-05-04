@@ -7,16 +7,23 @@
     leather:    '#d04848',
     cream:      '#e8b04b',
     sky:        '#5fb3d4',
+    refPurple:  '#b87cff',
   };
 
   const FONT_MONO = "'JetBrains Mono', 'SF Mono', Menlo, monospace";
 
+  // chartId -> { kind: 'angle'|'accel', imu: 'wrist'|'shoulder' }
   const CHARTS = {
-    angleWrist:    { id: 'chart-angle-wrist',    kind: 'angle' },
-    angleShoulder: { id: 'chart-angle-shoulder', kind: 'angle' },
-    accelWrist:    { id: 'chart-accel-wrist',    kind: 'accel' },
-    accelShoulder: { id: 'chart-accel-shoulder', kind: 'accel' },
+    'chart-angle-wrist':    { kind: 'angle', imu: 'wrist'    },
+    'chart-angle-shoulder': { kind: 'angle', imu: 'shoulder' },
+    'chart-accel-wrist':    { kind: 'accel', imu: 'wrist'    },
+    'chart-accel-shoulder': { kind: 'accel', imu: 'shoulder' },
   };
+
+  // chartId -> 'components' | 'magnitude'
+  const viewState = Object.fromEntries(
+    Object.keys(CHARTS).map(id => [id, 'components'])
+  );
 
   let lastData = null;
 
@@ -31,6 +38,21 @@
   fileInput.addEventListener('change', onFilePicked);
   inputAng.addEventListener('input', updateReferenceLines);
   inputAcc.addEventListener('input', updateReferenceLines);
+
+  document.querySelectorAll('.view-toggle').forEach(toggle => {
+    const chartId = toggle.dataset.chart;
+    toggle.querySelectorAll('.view-toggle__btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const view = btn.dataset.view;
+        if (viewState[chartId] === view) return;
+        viewState[chartId] = view;
+        toggle.querySelectorAll('.view-toggle__btn').forEach(b =>
+          b.classList.toggle('is-active', b.dataset.view === view)
+        );
+        if (lastData) renderChart(chartId);
+      });
+    });
+  });
 
   function setStatus(state, label) {
     statusDot.className = 'status-dot' + (state ? ' is-' + state : '');
@@ -65,7 +87,7 @@
       }
 
       lastData = json;
-      renderAll(json);
+      Object.keys(CHARTS).forEach(renderChart);
       setStatus('ready', 'LOADED · ' + file.name.toUpperCase());
     } catch (err) {
       setStatus(null, 'NETWORK ERROR');
@@ -74,6 +96,54 @@
     } finally {
       fileInput.value = '';
     }
+  }
+
+  function magnitude(a, b, c) {
+    const out = new Array(a.length);
+    for (let i = 0; i < a.length; i++) {
+      out[i] = Math.sqrt(a[i] * a[i] + b[i] * b[i] + c[i] * c[i]);
+    }
+    return out;
+  }
+
+  function lineTrace(name, x, y, color) {
+    return {
+      type: 'scatter',
+      mode: 'lines',
+      name,
+      x, y,
+      line: { color, width: 1.6 },
+      hovertemplate: name + ' · %{y:.3f}<extra></extra>',
+    };
+  }
+
+  function buildTraces(chartId) {
+    const { kind, imu } = CHARTS[chartId];
+    const data = lastData[imu];
+    const view = viewState[chartId];
+
+    if (kind === 'angle') {
+      if (view === 'magnitude') {
+        const mag = magnitude(data.gx, data.gy, data.gz);
+        return [lineTrace('|g|', data.time_s, mag, COLORS.leather)];
+      }
+      return [
+        lineTrace('gx', data.time_s, data.gx, COLORS.leather),
+        lineTrace('gy', data.time_s, data.gy, COLORS.cream),
+        lineTrace('gz', data.time_s, data.gz, COLORS.sky),
+      ];
+    }
+
+    // accel
+    if (view === 'magnitude') {
+      const mag = magnitude(data.ax, data.ay, data.az);
+      return [lineTrace('|a|', data.time_s, mag, COLORS.leather)];
+    }
+    return [
+      lineTrace('ax', data.time_s, data.ax, COLORS.leather),
+      lineTrace('ay', data.time_s, data.ay, COLORS.cream),
+      lineTrace('az', data.time_s, data.az, COLORS.sky),
+    ];
   }
 
   function makeLayout(yTitle) {
@@ -118,48 +188,18 @@
     responsive: true,
   };
 
-  function lineTrace(name, x, y, color) {
-    return {
-      type: 'scatter',
-      mode: 'lines',
-      name,
-      x, y,
-      line: { color, width: 1.6 },
-      hovertemplate: name + ' · %{y:.3f}<extra></extra>',
-    };
-  }
-
-  function renderAngle(divId, imuData) {
-    const traces = [
-      lineTrace('gx', imuData.time_s, imuData.gx, COLORS.leather),
-      lineTrace('gy', imuData.time_s, imuData.gy, COLORS.cream),
-      lineTrace('gz', imuData.time_s, imuData.gz, COLORS.sky),
-    ];
-    Plotly.newPlot(divId, traces, makeLayout('Angle Magnitude'), CONFIG);
-    hidePlaceholder(divId);
-  }
-
-  function renderAccel(divId, imuData) {
-    const traces = [
-      lineTrace('ax', imuData.time_s, imuData.ax, COLORS.leather),
-      lineTrace('ay', imuData.time_s, imuData.ay, COLORS.cream),
-      lineTrace('az', imuData.time_s, imuData.az, COLORS.sky),
-    ];
-    Plotly.newPlot(divId, traces, makeLayout('Acceleration Magnitude'), CONFIG);
-    hidePlaceholder(divId);
+  function renderChart(chartId) {
+    if (!lastData) return;
+    const { kind } = CHARTS[chartId];
+    const yTitle = kind === 'angle' ? 'Angle Magnitude' : 'Acceleration Magnitude';
+    Plotly.newPlot(chartId, buildTraces(chartId), makeLayout(yTitle), CONFIG);
+    hidePlaceholder(chartId);
+    applyRefLine(chartId);
   }
 
   function hidePlaceholder(divId) {
     const ph = document.querySelector('#' + divId + ' .placeholder');
     if (ph) ph.style.display = 'none';
-  }
-
-  function renderAll(data) {
-    renderAngle(CHARTS.angleWrist.id,    data.wrist);
-    renderAngle(CHARTS.angleShoulder.id, data.shoulder);
-    renderAccel(CHARTS.accelWrist.id,    data.wrist);
-    renderAccel(CHARTS.accelShoulder.id, data.shoulder);
-    updateReferenceLines();
   }
 
   function refLineShape(yValue) {
@@ -168,23 +208,21 @@
       xref: 'paper',
       x0: 0, x1: 1,
       y0: yValue, y1: yValue,
-      line: { color: COLORS.leather, width: 1.4, dash: 'dash' },
+      line: { color: COLORS.refPurple, width: 1.6, dash: 'dash' },
       layer: 'above',
     };
   }
 
+  function applyRefLine(chartId) {
+    const { kind } = CHARTS[chartId];
+    const raw = kind === 'angle' ? inputAng.value : inputAcc.value;
+    const v = parseFloat(raw);
+    const shapes = Number.isFinite(v) ? [refLineShape(v)] : [];
+    Plotly.relayout(chartId, { shapes });
+  }
+
   function updateReferenceLines() {
     if (!lastData) return;
-
-    const angVal = parseFloat(inputAng.value);
-    const accVal = parseFloat(inputAcc.value);
-
-    const angShapes = Number.isFinite(angVal) ? [refLineShape(angVal)] : [];
-    const accShapes = Number.isFinite(accVal) ? [refLineShape(accVal)] : [];
-
-    Plotly.relayout(CHARTS.angleWrist.id,    { shapes: angShapes });
-    Plotly.relayout(CHARTS.angleShoulder.id, { shapes: angShapes });
-    Plotly.relayout(CHARTS.accelWrist.id,    { shapes: accShapes });
-    Plotly.relayout(CHARTS.accelShoulder.id, { shapes: accShapes });
+    Object.keys(CHARTS).forEach(applyRefLine);
   }
 })();
