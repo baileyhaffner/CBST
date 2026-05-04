@@ -11,4 +11,5 @@ df = pd.read_csv(csv_file)
 # ================================
 # Create Data Plot
 # ================================
-result_graph = plt.plot(df)
+fig, axs = plt.plot(df)
+plt.show(axs)
