@@ -53,7 +53,7 @@ public:
             return;
         }
 
-        logFile.println("timestamp_ms,sample_number,imu,ax,ay,az,gx,gy,gz,temp");
+        logFile.println("timestamp_ms,sample_number,imu,ax,ay,az,gx,gy,gz");
     }
 
     // ================================
@@ -72,7 +72,7 @@ public:
         }
 
         logFile.printf(
-            "%lu,%lu,0x%02X,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f,%.2f\n",
+            "%lu,%lu,0x%02X,%.6f,%.6f,%.6f,%.6f,%.6f,%.6f\n",
             static_cast<unsigned long>(d.timestamp_ms),
             static_cast<unsigned long>(d.sample_number),
             d.imu_id,
@@ -81,8 +81,7 @@ public:
             d.az,
             d.gx,
             d.gy,
-            d.gz,
-            d.temp
+            d.gz
         );
     }
 

@@ -38,8 +38,6 @@ struct IMUData {
     float gx;
     float gy;
     float gz;
-
-    float temp;
 };
 
 // ================================
@@ -71,13 +69,13 @@ public:
 
         if (address == 0x6A && imu6AReady) {
             imu6A.getEvent(&accel, &gyro, &temp);
-            fillData(out, accel, gyro, temp, 0x6A, timestamp, sampleNumber);
+            fillData(out, accel, gyro, 0x6A, timestamp, sampleNumber);
             return true;
         }
 
         if (address == 0x6B && imu6BReady) {
             imu6B.getEvent(&accel, &gyro, &temp);
-            fillData(out, accel, gyro, temp, 0x6B, timestamp, sampleNumber);
+            fillData(out, accel, gyro, 0x6B, timestamp, sampleNumber);
             return true;
         }
 
@@ -172,7 +170,6 @@ private:
     void fillData(IMUData &d,
                   const sensors_event_t &accel,
                   const sensors_event_t &gyro,
-                  const sensors_event_t &temp,
                   uint8_t imuID,
                   uint32_t timestamp,
                   uint32_t sampleNumber) {
@@ -189,7 +186,5 @@ private:
         d.gx = gyro.gyro.x;
         d.gy = gyro.gyro.y;
         d.gz = gyro.gyro.z;
-
-        d.temp = temp.temperature;
     }
 };
