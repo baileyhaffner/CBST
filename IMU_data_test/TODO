@@ -1,9 +1,0 @@
-HARDWARE TEAM:
-Integrate both IMU's onto ESP 
-Setup wifi from ESP to run remotely 
-  - N.B. We will need to use the power pack we ordered with the USB-C cable to power the board as we will need the VBAT connects later
-Find max out refresh rate for sensor at the bottom of main.cpp, make a new branch as I kept crashing the dev board when I changed it
-
-SOFTWARE TEAM:
-Clean up the matplotlib graph and make a separate script for comparing the 2 IMU's 
-Implement Kalman filter to fuse the data from both IMU's
