@@ -11,6 +11,6 @@ subprocess.run(
 
 # 2. Run analysis.py
 subprocess.run(
-    [sys.executable, "analysis.py"],
+    [sys.executable, "hmi.py"],
     check=True
 )
