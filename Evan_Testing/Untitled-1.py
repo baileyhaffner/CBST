@@ -7,7 +7,7 @@ import os
 # Load CSV files
 # ================================
 _dir = os.path.dirname(os.path.abspath(__file__))
-csv_file = os.path.join(_dir, "good_fast.csv")
+csv_file = os.path.join(_dir, "data.csv")
 
 df = pd.read_csv(csv_file)
 

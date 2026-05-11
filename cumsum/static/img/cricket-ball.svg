@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none">
+  <defs>
+    <radialGradient id="leather" cx="38%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#e35858"/>
+      <stop offset="60%" stop-color="#d04848"/>
+      <stop offset="100%" stop-color="#7a2222"/>
+    </radialGradient>
+  </defs>
+
+  <circle cx="32" cy="32" r="26" fill="url(#leather)" stroke="#3a0d0d" stroke-width="0.6"/>
+
+  <!-- specular highlight -->
+  <ellipse cx="22" cy="22" rx="9" ry="5" fill="rgba(255,255,255,0.18)" transform="rotate(-30 22 22)"/>
+
+  <!-- seam (equator curve) -->
+  <path d="M 9 31 Q 32 23 55 31" fill="none" stroke="#f4e6c8" stroke-width="0.9" stroke-linecap="round"/>
+  <path d="M 9 31 Q 32 39 55 31" fill="none" stroke="#f4e6c8" stroke-width="0.9" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- stitches along the visible seam -->
+  <g stroke="#f4e6c8" stroke-width="0.9" stroke-linecap="round">
+    <line x1="13" y1="29.6" x2="13" y2="31.4"/>
+    <line x1="18" y1="28.2" x2="18" y2="30.6"/>
+    <line x1="23" y1="27.2" x2="23" y2="30.0"/>
+    <line x1="28" y1="26.6" x2="28" y2="29.6"/>
+    <line x1="33" y1="26.6" x2="33" y2="29.6"/>
+    <line x1="38" y1="27.0" x2="38" y2="29.8"/>
+    <line x1="43" y1="27.6" x2="43" y2="30.2"/>
+    <line x1="48" y1="28.6" x2="48" y2="30.8"/>
+    <line x1="53" y1="30.0" x2="53" y2="31.6"/>
+  </g>
+</svg>
