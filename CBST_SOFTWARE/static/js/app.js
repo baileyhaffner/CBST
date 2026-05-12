@@ -8,6 +8,7 @@
     cream:      '#e8b04b',
     sky:        '#5fb3d4',
     refPurple:  '#b87cff',
+    release:    '#7cffb8',
   };
 
   const FONT_MONO = "'JetBrains Mono', 'SF Mono', Menlo, monospace";
@@ -20,7 +21,7 @@
     'chart-accel-shoulder': { kind: 'accel', imu: 'shoulder' },
   };
 
-  // chartId -> 'components' | 'magnitude' | 'calibrated-angle'
+  // chartId -> 'components' | 'magnitude' | 'calibrated-angle' | 'release-angle'
   const viewState = Object.fromEntries(
     Object.keys(CHARTS).map(id => [id, 'components'])
   );
@@ -66,6 +67,25 @@
     });
   }
 
+  function getReleaseAnalysis() {
+    return lastData && lastData.shoulder && lastData.shoulder.release_analysis
+      ? lastData.shoulder.release_analysis
+      : null;
+  }
+
+  function buildReleaseStatusLabel(filename) {
+    const ra = getReleaseAnalysis();
+    if (!ra) return 'LOADED · ' + filename.toUpperCase();
+
+    const r = ra.release;
+    return (
+      'LOADED · ' + filename.toUpperCase() +
+      ' · RELEASE ' + r.angle_deg.toFixed(1) + '°' +
+      ' · ' + r.accel_mag.toFixed(2) + ' M/S²' +
+      ' · ' + r.gyro_mag.toFixed(2) + ' RAD/S'
+    );
+  }
+
   async function onFilePicked(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -88,7 +108,7 @@
 
       lastData = json;
       Object.keys(CHARTS).forEach(renderChart);
-      setStatus('ready', 'LOADED · ' + file.name.toUpperCase());
+      setStatus('ready', buildReleaseStatusLabel(file.name));
     } catch (err) {
       setStatus(null, 'NETWORK ERROR');
       setPlaceholderState(false);
@@ -117,12 +137,45 @@
     };
   }
 
+  function releaseMarkerTrace(timeS, yValue) {
+    return {
+      type: 'scatter',
+      mode: 'markers',
+      name: 'release',
+      x: [timeS],
+      y: [yValue],
+      marker: {
+        color: COLORS.release,
+        size: 10,
+        symbol: 'circle-open',
+        line: { width: 2, color: COLORS.release },
+      },
+      hovertemplate: 'release · %{x:.3f}s · %{y:.2f}<extra></extra>',
+    };
+  }
+
   function buildTraces(chartId) {
     const { kind, imu } = CHARTS[chartId];
     const data = lastData[imu];
     const view = viewState[chartId];
+    const ra = imu === 'shoulder' ? getReleaseAnalysis() : null;
 
     if (kind === 'angle') {
+      if (view === 'release-angle' && ra) {
+        const traces = [
+          lineTrace(
+            'release angle (axis: ' + ra.primary_gyro_axis + ')',
+            data.time_s,
+            ra.gyro_angle_deg,
+            COLORS.leather
+          )
+        ];
+        traces.push(
+          releaseMarkerTrace(ra.release.time_s, ra.release.angle_deg)
+        );
+        return traces;
+      }
+
       if (view === 'calibrated-angle') {
         return [
           lineTrace(
@@ -135,8 +188,15 @@
       }
 
       if (view === 'magnitude') {
-        const mag = magnitude(data.gx, data.gy, data.gz);
-        return [lineTrace('|g|', data.time_s, mag, COLORS.leather)];
+        const traces = [
+          lineTrace('|g|', data.time_s, magnitude(data.gx, data.gy, data.gz), COLORS.leather)
+        ];
+        if (ra) {
+          traces.push(
+            releaseMarkerTrace(ra.release.time_s, ra.release.gyro_mag)
+          );
+        }
+        return traces;
       }
 
       return [
@@ -148,8 +208,15 @@
 
     // accel
     if (view === 'magnitude') {
-      const mag = magnitude(data.ax, data.ay, data.az);
-      return [lineTrace('|a|', data.time_s, mag, COLORS.leather)];
+      const traces = [
+        lineTrace('|a|', data.time_s, magnitude(data.ax, data.ay, data.az), COLORS.leather)
+      ];
+      if (ra) {
+        traces.push(
+          releaseMarkerTrace(ra.release.time_s, ra.release.accel_mag)
+        );
+      }
+      return traces;
     }
 
     return [
@@ -164,6 +231,10 @@
     const view = viewState[chartId];
 
     if (kind === 'angle') {
+      if (view === 'release-angle') {
+        return 'Release Angle (deg)';
+      }
+
       if (view === 'calibrated-angle') {
         return 'Calibrated Angle (deg)';
       }
@@ -182,7 +253,22 @@
     return 'Acceleration Components';
   }
 
-  function makeLayout(yTitle) {
+  function releaseLineShape(timeS) {
+    return {
+      type: 'line',
+      yref: 'paper',
+      x0: timeS, x1: timeS,
+      y0: 0, y1: 1,
+      line: { color: COLORS.release, width: 1.2, dash: 'dot' },
+      layer: 'above',
+    };
+  }
+
+  function makeLayout(chartId, yTitle) {
+    const { imu } = CHARTS[chartId];
+    const ra = imu === 'shoulder' ? getReleaseAnalysis() : null;
+    const shapes = ra ? [releaseLineShape(ra.release.time_s)] : [];
+
     return {
       paper_bgcolor: COLORS.bg,
       plot_bgcolor:  COLORS.bg,
@@ -210,7 +296,7 @@
         font: { size: 10, color: COLORS.textMuted },
         bgcolor: 'rgba(0,0,0,0)',
       },
-      shapes: [],
+      shapes,
       hoverlabel: {
         bgcolor: '#0a0d12',
         bordercolor: COLORS.grid,
@@ -227,7 +313,7 @@
   function renderChart(chartId) {
     if (!lastData) return;
     const yTitle = getYTitle(chartId);
-    Plotly.newPlot(chartId, buildTraces(chartId), makeLayout(yTitle), CONFIG);
+    Plotly.newPlot(chartId, buildTraces(chartId), makeLayout(chartId, yTitle), CONFIG);
     hidePlaceholder(chartId);
     applyRefLine(chartId);
   }
@@ -249,10 +335,15 @@
   }
 
   function applyRefLine(chartId) {
-    const { kind } = CHARTS[chartId];
+    const { kind, imu } = CHARTS[chartId];
     const raw = kind === 'angle' ? inputAng.value : inputAcc.value;
     const v = parseFloat(raw);
-    const shapes = Number.isFinite(v) ? [refLineShape(v)] : [];
+
+    const ra = imu === 'shoulder' ? getReleaseAnalysis() : null;
+    const shapes = [];
+    if (ra) shapes.push(releaseLineShape(ra.release.time_s));
+    if (Number.isFinite(v)) shapes.push(refLineShape(v));
+
     Plotly.relayout(chartId, { shapes });
   }
 

@@ -6,11 +6,15 @@ from flask import Flask, jsonify, render_template, request
 WRIST_ID = "0x6A"
 SHOULDER_ID = "0x6B"
 
+SMOOTH_WINDOW = 10
+
 app = Flask(__name__)
+
 
 @app.route("/")
 def index():
     return render_template("index.html")
+
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -63,6 +67,79 @@ def calculate_calibrated_angle(time_s, gx):
     return calibrated_angle
 
 
+def calculate_release_analysis(sub):
+    """
+    Compute smoothed magnitudes, the cumulative gyroscope angle on the
+    dominant rotation axis, and the values sampled at the button-release
+    moment (which is the final row of the recording).
+    """
+    sub = sub.copy().reset_index(drop=True)
+
+    # Acceleration and gyroscope magnitudes
+    sub["accel_mag"] = np.sqrt(
+        sub["ax"] ** 2 + sub["ay"] ** 2 + sub["az"] ** 2
+    )
+    sub["gyro_mag"] = np.sqrt(
+        sub["gx"] ** 2 + sub["gy"] ** 2 + sub["gz"] ** 2
+    )
+
+    # Smooth to reduce noise
+    sub["accel_mag_smooth"] = (
+        sub["accel_mag"]
+        .rolling(SMOOTH_WINDOW, center=True, min_periods=1)
+        .mean()
+    )
+    sub["gyro_mag_smooth"] = (
+        sub["gyro_mag"]
+        .rolling(SMOOTH_WINDOW, center=True, min_periods=1)
+        .mean()
+    )
+
+    for col in ["gx", "gy", "gz"]:
+        sub[f"{col}_smooth"] = (
+            sub[col]
+            .rolling(SMOOTH_WINDOW, center=True, min_periods=1)
+            .mean()
+        )
+
+    # Detect dominant gyroscope axis for swing rotation.
+    # Using the signed axis with the highest variance avoids the
+    # magnitude-accumulation problem where gyro_mag (always positive)
+    # gives inflated angles.
+    gyro_axis_vars = {
+        col: sub[f"{col}_smooth"].var() for col in ["gx", "gy", "gz"]
+    }
+    primary_gyro_axis = max(gyro_axis_vars, key=gyro_axis_vars.get)
+
+    dt = sub["time_s"].diff().fillna(0)
+
+    sub["gyro_angle_rad"] = np.cumsum(
+        sub[f"{primary_gyro_axis}_smooth"].values * dt.values
+    )
+    sub["gyro_angle_deg"] = np.degrees(sub["gyro_angle_rad"])
+
+    # Release moment is the last row (button release stops the recording)
+    release_pos = sub.index[-1]
+
+    release_angle = abs(sub.loc[release_pos, "gyro_angle_deg"])
+    release_accel = sub.loc[release_pos, "accel_mag_smooth"]
+    release_gyro = sub.loc[release_pos, "gyro_mag_smooth"]
+    release_time = sub.loc[release_pos, "time_s"]
+
+    return {
+        "accel_mag_smooth": sub["accel_mag_smooth"].tolist(),
+        "gyro_mag_smooth": sub["gyro_mag_smooth"].tolist(),
+        "gyro_angle_deg": sub["gyro_angle_deg"].tolist(),
+        "primary_gyro_axis": primary_gyro_axis,
+        "release": {
+            "angle_deg": float(release_angle),
+            "accel_mag": float(release_accel),
+            "gyro_mag": float(release_gyro),
+            "time_s": float(release_time),
+        },
+    }
+
+
 def _imu_payload(df, imu_id):
     sub = df[df["imu"] == imu_id].copy()
 
@@ -71,7 +148,7 @@ def _imu_payload(df, imu_id):
 
     calibrated_angle = calculate_calibrated_angle(time_s, gx)
 
-    return {
+    payload = {
         "time_s": time_s,
 
         "ax": sub["ax"].tolist(),
@@ -84,6 +161,12 @@ def _imu_payload(df, imu_id):
 
         "calibrated_angle": calibrated_angle,
     }
+
+    # Only the shoulder gets the full release analysis
+    if imu_id == SHOULDER_ID and len(sub) > 0:
+        payload["release_analysis"] = calculate_release_analysis(sub)
+
+    return payload
 
 
 if __name__ == "__main__":
